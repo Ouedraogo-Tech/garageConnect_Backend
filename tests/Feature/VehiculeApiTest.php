@@ -34,7 +34,7 @@ class VehiculeApiTest extends TestCase
 
         // Assert : statut 200 + exactement 3 éléments à la racine du JSON
         $response->assertStatus(200);
-        $response->assertJsonCount(3);
+        $response->assertJsonCount(3, 'data');
     }
 
     /**

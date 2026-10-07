@@ -19,6 +19,8 @@ class Vehicule extends Model
         'carrosserie',
         'energie',
         'boite',
+        'email_proprietaire',
+        'client_id',
     ];
 
     // Un véhicule peut avoir plusieurs réparations
@@ -26,4 +28,8 @@ class Vehicule extends Model
     {
         return $this->hasMany(Reparation::class);
     }
+    public function client()
+{
+    return $this->belongsTo(Client::class);
+}
 }

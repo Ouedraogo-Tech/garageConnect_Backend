@@ -9,20 +9,23 @@ class TechnicienController extends Controller
 {
     // Liste de tous les techniciens
     public function index(Request $request)
-    {
-        $query = Technicien::query();
+{
+    $query = Technicien::query();
 
-        if ($request->filled('recherche')) {
-            $recherche = $request->input('recherche');
-            $query->where(function ($q) use ($recherche) {
-                $q->where('nom', 'like', "%{$recherche}%")
-                  ->orWhere('prenom', 'like', "%{$recherche}%")
-                  ->orWhere('specialite', 'like', "%{$recherche}%");
-            });
-        }
-
-        return $query->get();
+    if ($request->filled('recherche')) {
+        $recherche = $request->input('recherche');
+        $query->where(function ($q) use ($recherche) {
+            $q->where('nom', 'like', "%{$recherche}%")
+              ->orWhere('prenom', 'like', "%{$recherche}%")
+              ->orWhere('specialite', 'like', "%{$recherche}%");
+        });
     }
+    if ($request->boolean('all')) {
+    return $query->get();
+}
+
+    return $query->paginate(10);
+}
 
     // Crée un nouveau technicien
     public function store(Request $request)

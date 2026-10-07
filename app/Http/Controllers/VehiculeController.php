@@ -2,15 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreVehiculeRequest;
+use App\Http\Requests\UpdateVehiculeRequest;
 use App\Models\Vehicule;
 use Illuminate\Http\Request;
 
 class VehiculeController extends Controller
 {
-    // Liste de tous les véhicules
     public function index(Request $request)
     {
-        $query = Vehicule::query();
+        $query = Vehicule::with('client');
+
+        if ($request->user()->role === 'client') {
+            $query->where('client_id', $request->user()->client_id);
+        }
 
         if ($request->filled('recherche')) {
             $recherche = $request->input('recherche');
@@ -20,60 +25,61 @@ class VehiculeController extends Controller
             });
         }
 
-        return $query->get();
+        if ($request->boolean('all')) {
+            return $query->get();
+        }
+
+        return $query->paginate(10);
     }
 
-    // Crée un nouveau véhicule
-    public function store(Request $request)
+    public function store(StoreVehiculeRequest $request)
     {
-        $request->validate([
-            'immatriculation' => 'required|string|unique:vehicules,immatriculation',
-            'marque' => 'required|string|max:255',
-            'modele' => 'required|string|max:255',
-            'couleur' => 'required|string|max:255',
-            'annee' => 'required|integer|min:1950|max:' . date('Y'),
-            'kilometrage' => 'required|integer|min:0',
-            'carrosserie' => 'required|string|max:255',
-            'energie' => 'required|string|max:255',
-            'boite' => 'required|string|max:255',
-        ]);
+        $data = $request->validated();
 
-        $vehicule = Vehicule::create($request->all());
+        if ($request->user()->role === 'client') {
+            $data['client_id'] = $request->user()->client_id;
+        }
+
+        $vehicule = Vehicule::create($data);
         return response()->json($vehicule, 201);
     }
 
-    // Affiche un véhicule précis
-    public function show($id)
-    {
-        $vehicule = Vehicule::findOrFail($id);
-        return response()->json($vehicule);
-    }
-
-    // Met à jour un véhicule
-    public function update(Request $request, $id)
+    public function show(Request $request, $id)
     {
         $vehicule = Vehicule::findOrFail($id);
 
-        $request->validate([
-            'immatriculation' => 'required|string|unique:vehicules,immatriculation,' . $vehicule->id,
-            'marque' => 'required|string|max:255',
-            'modele' => 'required|string|max:255',
-            'couleur' => 'required|string|max:255',
-            'annee' => 'required|integer|min:1950|max:' . date('Y'),
-            'kilometrage' => 'required|integer|min:0',
-            'carrosserie' => 'required|string|max:255',
-            'energie' => 'required|string|max:255',
-            'boite' => 'required|string|max:255',
-        ]);
+        if (! $request->user()->can('view', $vehicule)) {
+            return response()->json(['message' => 'Accès refusé.'], 403);
+        }
 
-        $vehicule->update($request->all());
         return response()->json($vehicule);
     }
 
-    // Supprime un véhicule
-    public function destroy($id)
+    public function update(UpdateVehiculeRequest $request, $id)
     {
-        Vehicule::destroy($id);
+        // L'autorisation (propriété du véhicule) est déjà vérifiée dans
+        // UpdateVehiculeRequest::authorize(), avant même la validation.
+        $vehicule = Vehicule::findOrFail($id);
+
+        $data = $request->validated();
+
+        if ($request->user()->role === 'client') {
+            $data['client_id'] = $request->user()->client_id;
+        }
+
+        $vehicule->update($data);
+        return response()->json($vehicule);
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $vehicule = Vehicule::findOrFail($id);
+
+        if (! $request->user()->can('delete', $vehicule)) {
+            return response()->json(['message' => 'Accès refusé.'], 403);
+        }
+
+        $vehicule->delete();
         return response()->json(null, 204);
     }
 }
